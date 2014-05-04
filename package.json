@@ -1,0 +1,10 @@
+{
+  "name": "purescript-ajax",
+  "version": "0.0.1",
+  "devDependencies": {
+    "gulp": "~3.6.0",
+    "gulp-clean": "~0.2.x",
+    "gulp-purescript": "~0.0.x",
+    "gulp-util": "^2.2.14"
+  }
+}
