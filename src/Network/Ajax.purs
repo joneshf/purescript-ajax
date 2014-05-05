@@ -81,7 +81,7 @@ module Network.Ajax where
   put = httpVerb PUT
 
   httpVerb :: Verb -> URI -> XHRAjax
-  httpVerb v u = xhr >>= \x -> open x v u
+  httpVerb = open xhr
 
   onreadystatechange :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onreadystatechange = on "onreadystatechange"
