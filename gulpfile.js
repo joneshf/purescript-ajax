@@ -1,7 +1,6 @@
 var gulp = require('gulp')
   , clean = require('gulp-clean')
-  , purescript = require('gulp-purescript')
-  , util = require('gulp-util');
+  , purescript = require('gulp-purescript');
 
 paths = {
     src: [
@@ -19,7 +18,7 @@ paths = {
 gulp.task('purescript', function() {
     var psc = purescript.psc();
     psc.on('error', function(e) {
-        util.log(e);
+        console.log(e.message);
         psc.end();
     });
     return gulp.src(paths.src)

@@ -2,11 +2,45 @@ module Network.Ajax where
 
   import Control.Monad.Eff
 
+  import qualified Data.Array as A
+
   import Network.HTTP
 
   foreign import data XHR :: !
 
+  -- Clean up signatures.
+  type XHRAjax = forall a eff. Eff (x :: XHR | eff) (Ajax a)
+  type EffAjax = forall a eff. Eff eff (Ajax a)
+
   type URI = String
+
+  -- This should be something like data Payload = JSON | XML | PlainText | ...
+  type Payload = String
+
+  data Ajax a = GetRequest URI [Header]
+              | PostRequest URI [Header] Payload
+              | Response [Header] a
+
+  instance functorAjax :: Functor Ajax where
+    (<$>) f (Response h x) = Response h (f x)
+    (<$>) _ (GetRequest  u h)   = GetRequest  u h
+    (<$>) _ (PostRequest u h p) = PostRequest u h p
+
+  instance applyAjax :: Apply Ajax where
+    (<*>) (Response h f) (Response h' x) = Response (h ++ h') (f x)
+
+  instance bindAjax :: Bind Ajax where
+    (>>=) (Response h x) f = f x
+    (>>=) (GetRequest  u h)   _ = GetRequest  u h
+    (>>=) (PostRequest u h p) _ = PostRequest u h p
+    -- Should this instead dish off the request and work with the response?
+    -- (>>=) (GetRequest  u h) f = response (get  u >>= \x -> send x) >>= f
+    -- (>>=) (PostRequest u h) f = response (post u >>= \x -> send x) >>= f
+
+  instance applicativeAjax :: Applicative Ajax where
+    pure x = Response [] x
+
+  instance monadAjax :: Monad Ajax
 
   data ReadyState = Done
                   | HeadersReceived
@@ -24,43 +58,43 @@ module Network.Ajax where
 
     (/=) rs              rs'             = not (rs == rs')
 
-  delete :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  delete :: URI -> XHRAjax
   delete = httpVerb DELETE
 
-  get :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  get :: URI -> XHRAjax
   get = httpVerb GET
 
-  head :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  head :: URI -> XHRAjax
   head = httpVerb HEAD
 
-  options :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  options :: URI -> XHRAjax
   options = httpVerb OPTIONS
 
-  patch :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  patch :: URI -> XHRAjax
   patch = httpVerb PATCH
 
-  post :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  post :: URI -> XHRAjax
   post = httpVerb POST
 
-  put :: forall eff a. URI -> Eff (x :: XHR | eff) a
+  put :: URI -> XHRAjax
   put = httpVerb PUT
 
-  httpVerb :: forall eff a. Verb -> URI -> Eff (x :: XHR | eff) a
-  httpVerb = open xhr
+  httpVerb :: Verb -> URI -> XHRAjax
+  httpVerb v u = xhr >>= \x -> open x v u
 
   -- | FFI Calls
 
   foreign import currentTarget
     "function currentTarget(x) {\
     \  return x.currentTarget;\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Eff (x :: XHR | eff) a
+    \}" :: forall a. Ajax a -> XHRAjax
 
   foreign import getResponseHeader
     "function getResponseHeader(x) {\
     \  return function(header) {\
     \    console.log(x.getResponseHeader(header2Head(header)));\
     \  }\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Header -> Eff eff a
+    \}" :: forall a. Ajax a -> Header -> EffAjax
 
   foreign import onreadystatechange
     "function onreadystatechange(x) {\
@@ -68,7 +102,7 @@ module Network.Ajax where
     \    x.onreadystatechange = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   -- These might need to be a different type.
   foreign import onabort
@@ -77,7 +111,7 @@ module Network.Ajax where
     \    x.onabort = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import onerror
     "function onerror(x) {\
@@ -85,7 +119,7 @@ module Network.Ajax where
     \    x.onerror = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import onload
     "function onload(x) {\
@@ -93,7 +127,7 @@ module Network.Ajax where
     \    x.onload = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import onloadend
     "function onloadend(x) {\
@@ -101,7 +135,7 @@ module Network.Ajax where
     \    x.onloadend = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import onloadstart
     "function onloadstart(x) {\
@@ -109,7 +143,7 @@ module Network.Ajax where
     \    x.onloadstart = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import onprogress
     "function onprogress(x) {\
@@ -117,7 +151,7 @@ module Network.Ajax where
     \    x.onprogress = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import ontimeout
     "function ontimeout(x) {\
@@ -125,18 +159,18 @@ module Network.Ajax where
     \    x.ontimeout = f;\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a x. Eff (x :: XHR | eff) a -> (Eff (x :: XHR | eff) a -> Eff eff a) -> Eff eff a
+    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import open
     "function open(x) {\
     \  return function(verb) {\
     \    return function(uri) {\
-    \      var verbStr = PS.Prelude.show(showHTTPVerb())(verb);\
+    \      var verbStr = PS.Prelude.show(PS.Network_HTTP.showHTTPVerb())(verb);\
     \      x.open(verbStr, uri);\
     \      return function() { return x; }\
     \    }\
     \  }\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Verb -> URI -> Eff (x :: XHR | eff) a
+    \}" :: forall a. Ajax a -> Verb -> URI -> XHRAjax
 
   foreign import readyState
     "function readyState(x) {\
@@ -148,23 +182,28 @@ module Network.Ajax where
     \    case 4: return Done;\
     \    default: throw 'Failed pattern match';\
     \  }\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> ReadyState
+    \}" :: forall a. Ajax a -> ReadyState
+
+  foreign import response
+    "function response(x) {\
+    \  return x.response;\
+    \}" :: forall a. XHRAjax -> Ajax a
 
   foreign import responseText
     "function responseText(x) {\
-    \  console.log(x.responseText);\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Eff eff a
+    \  return x.responseText;\
+    \}" :: XHRAjax -> String
 
   foreign import responseXML
     "function responseXML(x) {\
-    \  console.log(x.responseXML);\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Eff eff a
+    \  return x.responseXML;\
+    \}" :: XHRAjax -> String
 
   foreign import send
     "function send(x) {\
     \  x.send();\
     \  return function() { return x; }\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Eff (x :: XHR | eff) a
+    \}" :: XHRAjax -> XHRAjax
 
   foreign import setRequestHeader
     "function setRequestHeader(x) {\
@@ -172,7 +211,19 @@ module Network.Ajax where
     \    x.setRequestHeader(header2Head(header), header2Value(header));\
     \    return function() { return x; }\
     \  }\
-    \}" :: forall eff a. Eff (x :: XHR | eff) a -> Header -> Eff (x :: XHR | eff) a
+    \}" :: XHRAjax -> Header -> XHRAjax
+
+  foreign import status
+    "function status(x) {\
+    \  return x.status;\
+    \}" :: XHRAjax -> StatusCode
+
+  foreign import statusText
+    "function statusText(x) {\
+    \  return x.statusText;\
+    \}" :: XHRAjax -> String
 
   foreign import xhr
-    "var xhr = new XMLHttpRequest();" :: forall eff a. Eff (x :: XHR | eff) a
+    "function xhr() {\
+    \  return new XMLHttpRequest();\
+    \}" :: XHRAjax

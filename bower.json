@@ -10,5 +10,8 @@
   ],
   "devDependencies": {
     "purescript-quickcheck": "*"
+  },
+  "dependencies": {
+    "purescript-arrays": "~0.1.2"
   }
 }

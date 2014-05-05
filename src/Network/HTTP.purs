@@ -48,6 +48,7 @@ module Network.HTTP where
                   | UnsupportedMediaType
                   | UseProxy
 
+  -- This type is not expressive enough.
   data Header = Accept             String
               | AcceptCharset      String
               | AcceptEncoding     String
@@ -98,6 +99,8 @@ module Network.HTTP where
 
   instance showHeader :: Show Header where
     show header = header2Head header ++ ": " ++ header2Value header
+
+  -- TODO: StatusCode need a show instance
 
   header2Head :: Header -> String
   header2Head (Accept _)             = "Accept"
