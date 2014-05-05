@@ -57,37 +57,37 @@ module Network.Ajax where
   httpVerb :: Verb -> URI -> XHRAjax
   httpVerb v u = pure $ Left {verb: v, uri: u, headers: [], content: "", xhr: newXhr}
 
-  onreadystatechange :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onreadystatechange :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onreadystatechange = on "onreadystatechange"
-  onabort            :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onabort            :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onabort            = on "onabort"
-  onerror            :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onerror            :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onerror            = on "onerror"
-  onload             :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onload             :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onload             = on "onload"
-  onloadend          :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadend          :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onloadend          = on "onloadend"
-  onloadstart        :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadstart        :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onloadstart        = on "onloadstart"
-  onprogress         :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  onprogress         :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   onprogress         = on "onprogress"
-  ontimeout          :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+  ontimeout          :: Ajax -> (XHRAjax -> EffAjax) -> EffAjax
   ontimeout          = on "ontimeout"
 
-  currentTarget :: XHRAjax -> XHRAjax
+  currentTarget :: Ajax -> XHRAjax
   currentTarget = attr "currentTarget"
-  response      :: XHRAjax -> Response
+  response      :: Ajax -> Response
   response      = attr "response"
-  responseText  :: XHRAjax -> String
+  responseText  :: Ajax -> String
   responseText  = attr "responseText"
-  responseXML   :: XHRAjax -> String
+  responseXML   :: Ajax -> String
   responseXML   = attr "responseXML"
-  status        :: XHRAjax -> StatusCode
+  status        :: Ajax -> StatusCode
   status        = attr "status"
-  statusText    :: XHRAjax -> String
+  statusText    :: Ajax -> String
   statusText    = attr "statusText"
 
-  readyState :: XHRAjax -> ReadyState
+  readyState :: Ajax -> ReadyState
   readyState x = case attr "readyState" x of
     0 -> Unsent
     1 -> Opened
@@ -95,10 +95,10 @@ module Network.Ajax where
     3 -> Loading
     4 -> Done
 
-  getResponseHeader :: XHRAjax -> HeaderHead -> String
+  getResponseHeader :: Ajax -> HeaderHead -> String
   getResponseHeader x = attr "getResponseHeader" x <<< show
 
-  setRequestHeader :: XHRAjax -> Header -> XHRAjax
+  setRequestHeader :: Ajax -> Header -> XHRAjax
   setRequestHeader x (Header header value) =
     curry2 (attr "setRequestHeader" x) (show header) value
 
@@ -108,41 +108,51 @@ module Network.Ajax where
       getXhr :: forall r. {xhr :: XHR | r} -> XHR
       getXhr o = o.xhr
 
+  open :: Request -> XHRAjax
+  open req@{xhr = x, verb = v, uri = u} =
+    pure <<< Left $ req {xhr = unsafeOpen x (show v) u}
+
+  -- send :: Request -> XHRAjax
+  -- send req@{xhr = x} =
+  --   let xhr' = unsafeSend x
+  --   in pure <<< Right $ {status = status xhr', xhr = unsafeSend x
+
   -- | FFI Calls
 
   foreign import attr
     "function attr(a) {\
     \  return function(x) {\
-    \    return ajax2XHR(x).currentTarget;\
+    \    return x[a];\
     \  }\
-    \}" :: forall a. String -> XHRAjax -> a
+    \}" :: forall a. String -> Ajax -> a
 
   foreign import on
     "function on(method) {\
     \  return function(x) {\
     \    return function(f) {\
-    \      ajax2XHR(x)[method] = f;\
-    \      return function() { return x; }\
+    \      return function() {\
+    \        x[method] = f;\
+    \        return x;\
+    \      }\
     \    }\
     \  }\
-    \}" :: String -> XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
+    \}" :: String -> Ajax -> (XHRAjax -> EffAjax) -> EffAjax
 
-  foreign import open
-    "function open(x) {\
+  foreign import unsafeOpen
+    "function unsafeOpen(x) {\
     \  return function(verb) {\
     \    return function(uri) {\
-    \      var verbStr = PS.Prelude.show(PS.Network_HTTP.showHTTPVerb())(verb);\
-    \      ajax2XHR(x).open(verbStr, uri);\
-    \      return function() { return x; }\
+    \      x.open(verb, uri);\
+    \      return x;\
     \    }\
     \  }\
-    \}" :: XHRAjax-> Verb -> URI -> XHRAjax
+    \}" :: XHR -> String -> URI -> XHR
 
-  foreign import send
-    "function send(x) {\
-    \  ajax2XHR(x).send();\
-    \  return function() { return x; }\
-    \}" :: XHRAjax -> XHRAjax
+  foreign import unsafeSend
+    "function unsafeSend(x) {\
+    \  x.xhr.send();\
+    \  return x;\
+    \}" :: XHR -> XHR
 
   foreign import newXhr
     "var newXhr = new XMLHttpRequest();" :: XHR

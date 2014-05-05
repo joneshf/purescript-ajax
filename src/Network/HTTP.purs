@@ -1,5 +1,14 @@
 module Network.HTTP where
 
+  import Control.Apply
+
+  import Data.Maybe
+  import Data.String
+
+  import Text.Parsing.Parser
+  import Text.Parsing.Parser.Combinators
+  import Text.Parsing.Parser.String
+
   data Verb = DELETE
             | GET
             | HEAD
@@ -8,7 +17,8 @@ module Network.HTTP where
             | POST
             | PUT
 
-  data StatusCode = Accepted
+  data StatusCode = NoStatus
+                  | Accepted
                   | BadGateway
                   | BadRequest
                   | Continue
@@ -146,7 +156,50 @@ module Network.HTTP where
     show Warning            = "Warning"
     show (Custom header)    = header
 
+  string2Head :: String -> HeaderHead
+  string2Head "Accept"              = Accept
+  string2Head "Accept-Charset"      = AcceptCharset
+  string2Head "Accept-Encoding"     = AcceptEncoding
+  string2Head "Accept-Language"     = AcceptLanguage
+  string2Head "Allow"               = Allow
+  string2Head "Authorization"       = Authorization
+  string2Head "Cache-Control"       = CacheControl
+  string2Head "Connection"          = Connection
+  string2Head "Content-Encoding"    = ContentEncoding
+  string2Head "Content-Language"    = ContentLanguage
+  string2Head "Content-Length"      = ContentLength
+  string2Head "Content-Location"    = ContentLocation
+  string2Head "Content-MD5"         = ContentMD5
+  string2Head "Content-Range"       = ContentRange
+  string2Head "Content-Type"        = ContentType
+  string2Head "Date"                = Date
+  string2Head "Expect"              = Expect
+  string2Head "Expires"             = Expires
+  string2Head "From"                = From
+  string2Head "Host"                = Host
+  string2Head "If-Match"            = IfMatch
+  string2Head "If-Modified-Since"   = IfModifiedSince
+  string2Head "If-None-Match"       = IfNoneMatch
+  string2Head "If-Range"            = IfRange
+  string2Head "If-Unmodified-Since" = IfUnmodifiedSince
+  string2Head "Last-Modified"       = LastModified
+  string2Head "Max-Forwards"        = MaxForwards
+  string2Head "Pragma"              = Pragma
+  string2Head "Proxy-Authorization" = ProxyAuthorization
+  string2Head "Range"               = Range
+  string2Head "Referer"             = Referer
+  string2Head "Te"                  = TE
+  string2Head "Trailer"             = Trailer
+  string2Head "Transfer-Encoding"   = TransferEncoding
+  string2Head "Upgrade"             = Upgrade
+  string2Head "User-Agent"          = UserAgent
+  string2Head "Via"                 = Via
+  string2Head "Warning"             = Warning
+  string2Head header                = (Custom header)
+
   status2Number :: StatusCode -> Number
+  -- 0 Default status for unsent requests
+  status2Number NoStatus                          = 0
   -- 100 Informational
   status2Number Continue                     = 100
   status2Number SwitchingProtocols           = 101
@@ -191,3 +244,72 @@ module Network.HTTP where
   status2Number ServiceUnavailable           = 503
   status2Number GatewayTimeout               = 504
   status2Number HTTPVersionNotSupported      = 505
+
+  number2Status :: Number -> Maybe StatusCode
+  -- 0 Default status for unsent requests
+  number2Status 0   = Just NoStatus
+  -- 100 Informational
+  number2Status 100 = Just Continue
+  number2Status 101 = Just SwitchingProtocols
+  -- 200 Successful
+  number2Status 200 = Just Ok
+  number2Status 201 = Just Created
+  number2Status 202 = Just Accepted
+  number2Status 203 = Just NonAuthoritativeInformation
+  number2Status 204 = Just NoContent
+  number2Status 205 = Just ResetContent
+  number2Status 206 = Just PartialContent
+  -- 300 Redirection
+  number2Status 300 = Just MultipleChoices
+  number2Status 301 = Just MovedPermanently
+  number2Status 302 = Just Found
+  number2Status 303 = Just SeeOther
+  number2Status 304 = Just NotModified
+  number2Status 305 = Just UseProxy
+  number2Status 307 = Just TemporaryRedirect
+  -- 400 Client Error
+  number2Status 400 = Just BadRequest
+  number2Status 401 = Just Unauthorized
+  number2Status 402 = Just PaymentRequired
+  number2Status 403 = Just Forbidden
+  number2Status 404 = Just NotFound
+  number2Status 405 = Just MethodNotAllowed
+  number2Status 406 = Just NotAcceptable
+  number2Status 407 = Just ProxyAuthenticationRequired
+  number2Status 408 = Just RequestTimeout
+  number2Status 410 = Just Gone
+  number2Status 411 = Just LengthRequired
+  number2Status 412 = Just PreconditionFailed
+  number2Status 413 = Just RequestEntityTooLarge
+  number2Status 414 = Just RequestURITooLong
+  number2Status 415 = Just UnsupportedMediaType
+  number2Status 416 = Just RequestedRangeNotSatisfiable
+  number2Status 417 = Just ExpectationFailed
+  -- 500 Server Error
+  number2Status 500 = Just InternalServerError
+  number2Status 501 = Just NotImplemented
+  number2Status 502 = Just BadGateway
+  number2Status 503 = Just ServiceUnavailable
+  number2Status 504 = Just GatewayTimeout
+  number2Status 505 = Just HTTPVersionNotSupported
+  number2Status _   = Nothing
+
+  -- TODO: Move these to purescript-parsing.
+  eol :: forall m. (Monad m) => ParserT String m String
+  eol = string "\n"
+  skipMany :: forall m s a. (Monad m) => ParserT s m a -> ParserT s m {}
+  skipMany s = many s *> pure {}
+  space :: forall m. (Monad m) => ParserT String m String
+  space = choice [ string " "
+                 , string "\t"
+                 ]
+  skipSpaces :: forall m. (Monad m) => ParserT String m {}
+  skipSpaces = skipMany space
+
+  parseHeader :: forall m. (Monad m) => ParserT String m Header
+  parseHeader = do
+    head <- many1 char <* string ":" <* skipSpaces
+    values <- many1 char <* eol
+    let head' = string2Head $ joinWith "" head
+    let values' = joinWith "" values
+    pure $ Header head' values'

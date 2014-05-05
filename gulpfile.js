@@ -6,7 +6,8 @@ paths = {
     src: [
         'src/**/*.purs',
         '!bower_components/purescript-quickcheck/**/*.purs',
-        'bower_components/purescript-*/src/**/*.purs'
+        'bower_components/purescript-*/src/**/*.purs',
+        'bower_components/purescript-*/src/**/*.purs.hs'
     ],
     test: [
         'src/**/*.purs',
