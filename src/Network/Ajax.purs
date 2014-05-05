@@ -82,84 +82,65 @@ module Network.Ajax where
   httpVerb :: Verb -> URI -> XHRAjax
   httpVerb v u = xhr >>= \x -> open x v u
 
+  onreadystatechange :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onreadystatechange = on "onreadystatechange"
+  onabort            :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onabort            = on "onabort"
+  onerror            :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onerror            = on "onerror"
+  onload             :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onload             = on "onload"
+  onloadend          :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadend          = on "onloadend"
+  onloadstart        :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadstart        = on "onloadstart"
+  onprogress         :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onprogress         = on "onprogress"
+  ontimeout          :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  ontimeout          = on "ontimeout"
+
+  currentTarget :: XHRAjax -> XHRAjax
+  currentTarget = attr "currentTarget"
+  response      :: forall a. XHRAjax -> Ajax a
+  response      = attr "response"
+  responseText  :: XHRAjax -> String
+  responseText  = attr "responseText"
+  responseXML   :: XHRAjax -> String
+  responseXML   = attr "responseXML"
+  status        :: XHRAjax -> StatusCode
+  status        = attr "status"
+  statusText    :: XHRAjax -> String
+  statusText    = attr "statusText"
+
+  readyState :: XHRAjax -> ReadyState
+  readyState x = case attr "readyState" x of
+    0 -> Unsent
+    1 -> Opened
+    2 -> HeadersReceived
+    3 -> Loading
+    4 -> Done
+
+  getResponseHeader :: XHRAjax -> Header -> String
+  getResponseHeader x h = (attr "getResponseHeader" x) $ header2Head h
+
   -- | FFI Calls
 
-  foreign import currentTarget
-    "function currentTarget(x) {\
-    \  return x.currentTarget;\
-    \}" :: forall a. Ajax a -> XHRAjax
-
-  foreign import getResponseHeader
-    "function getResponseHeader(x) {\
-    \  return function(header) {\
-    \    console.log(x.getResponseHeader(header2Head(header)));\
+  foreign import attr
+    "function attr(a) {\
+    \  return function(x) {\
+    \    return x.currentTarget;\
     \  }\
-    \}" :: forall a. Ajax a -> Header -> EffAjax
+    \}" :: forall a. String -> XHRAjax -> a
 
-  foreign import onreadystatechange
-    "function onreadystatechange(x) {\
-    \  return function(f) {\
-    \    x.onreadystatechange = f;\
-    \    return function() { return x; }\
+  foreign import on
+    "function on(method) {\
+    \  return function(x) {\
+    \    return function(f) {\
+    \      x[method] = f;\
+    \      return function() { return x; }\
+    \    }\
     \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  -- These might need to be a different type.
-  foreign import onabort
-    "function onabort(x) {\
-    \  return function(f) {\
-    \    x.onabort = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import onerror
-    "function onerror(x) {\
-    \  return function(f) {\
-    \    x.onerror = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import onload
-    "function onload(x) {\
-    \  return function(f) {\
-    \    x.onload = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import onloadend
-    "function onloadend(x) {\
-    \  return function(f) {\
-    \    x.onloadend = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import onloadstart
-    "function onloadstart(x) {\
-    \  return function(f) {\
-    \    x.onloadstart = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import onprogress
-    "function onprogress(x) {\
-    \  return function(f) {\
-    \    x.onprogress = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
-
-  foreign import ontimeout
-    "function ontimeout(x) {\
-    \  return function(f) {\
-    \    x.ontimeout = f;\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+    \}" :: forall a. String -> Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import open
     "function open(x) {\
@@ -171,33 +152,6 @@ module Network.Ajax where
     \    }\
     \  }\
     \}" :: forall a. Ajax a -> Verb -> URI -> XHRAjax
-
-  foreign import readyState
-    "function readyState(x) {\
-    \  switch (x.readyState) {\
-    \    case 0: return Unsent;\
-    \    case 1: return Opened;\
-    \    case 2: return HeadersReceived;\
-    \    case 3: return Loading;\
-    \    case 4: return Done;\
-    \    default: throw 'Failed pattern match';\
-    \  }\
-    \}" :: forall a. Ajax a -> ReadyState
-
-  foreign import response
-    "function response(x) {\
-    \  return x.response;\
-    \}" :: forall a. XHRAjax -> Ajax a
-
-  foreign import responseText
-    "function responseText(x) {\
-    \  return x.responseText;\
-    \}" :: XHRAjax -> String
-
-  foreign import responseXML
-    "function responseXML(x) {\
-    \  return x.responseXML;\
-    \}" :: XHRAjax -> String
 
   foreign import send
     "function send(x) {\
@@ -212,16 +166,6 @@ module Network.Ajax where
     \    return function() { return x; }\
     \  }\
     \}" :: XHRAjax -> Header -> XHRAjax
-
-  foreign import status
-    "function status(x) {\
-    \  return x.status;\
-    \}" :: XHRAjax -> StatusCode
-
-  foreign import statusText
-    "function statusText(x) {\
-    \  return x.statusText;\
-    \}" :: XHRAjax -> String
 
   foreign import xhr
     "function xhr() {\
