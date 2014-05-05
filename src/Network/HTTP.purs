@@ -48,45 +48,48 @@ module Network.HTTP where
                   | UnsupportedMediaType
                   | UseProxy
 
+  data Header = Header HeaderHead String
+
   -- This type is not expressive enough.
-  data Header = Accept             String
-              | AcceptCharset      String
-              | AcceptEncoding     String
-              | AcceptLanguage     String
-              | Allow              String
-              | Authorization      String
-              | CacheControl       String
-              | Connection         String
-              | ContentEncoding    String
-              | ContentLanguage    String
-              | ContentLength      String
-              | ContentLocation    String
-              | ContentMD5         String
-              | ContentRange       String
-              | ContentType        String
-              | Date               String
-              | Expect             String
-              | Expires            String
-              | From               String
-              | Host               String
-              | IfMatch            String
-              | IfModifiedSince    String
-              | IfNoneMatch        String
-              | IfRange            String
-              | IfUnmodifiedSince  String
-              | LastModified       String
-              | MaxForwards        String
-              | Pragma             String
-              | ProxyAuthorization String
-              | Range              String
-              | Referer            String
-              | TE                 String
-              | Trailer            String
-              | TransferEncoding   String
-              | Upgrade            String
-              | UserAgent          String
-              | Via                String
-              | Warning            String
+  data HeaderHead = Accept
+                  | AcceptCharset
+                  | AcceptEncoding
+                  | AcceptLanguage
+                  | Allow
+                  | Authorization
+                  | CacheControl
+                  | Connection
+                  | ContentEncoding
+                  | ContentLanguage
+                  | ContentLength
+                  | ContentLocation
+                  | ContentMD5
+                  | ContentRange
+                  | ContentType
+                  | Date
+                  | Expect
+                  | Expires
+                  | From
+                  | Host
+                  | IfMatch
+                  | IfModifiedSince
+                  | IfNoneMatch
+                  | IfRange
+                  | IfUnmodifiedSince
+                  | LastModified
+                  | MaxForwards
+                  | Pragma
+                  | ProxyAuthorization
+                  | Range
+                  | Referer
+                  | TE
+                  | Trailer
+                  | TransferEncoding
+                  | Upgrade
+                  | UserAgent
+                  | Via
+                  | Warning
+                  | Custom String
 
   instance showHTTPVerb :: Show Verb where
     show DELETE  = "DELETE"
@@ -98,89 +101,50 @@ module Network.HTTP where
     show PUT     = "PUT"
 
   instance showHeader :: Show Header where
-    show header = header2Head header ++ ": " ++ header2Value header
+    show (Header head value) = show head ++ ": " ++ value
 
   -- TODO: StatusCode need a show instance
 
-  header2Head :: Header -> String
-  header2Head (Accept _)             = "Accept"
-  header2Head (AcceptCharset _)      = "Accept-Charset"
-  header2Head (AcceptEncoding _)     = "Accept-Encoding"
-  header2Head (AcceptLanguage _)     = "Accept-Language"
-  header2Head (Allow _)              = "Allow"
-  header2Head (Authorization _)      = "Authorization"
-  header2Head (CacheControl _)       = "Cache-Control"
-  header2Head (Connection _)         = "Connection"
-  header2Head (ContentEncoding _)    = "Content-Encoding"
-  header2Head (ContentLanguage _)    = "Content-Language"
-  header2Head (ContentLength _)      = "Content-Length"
-  header2Head (ContentLocation _)    = "Content-Location"
-  header2Head (ContentMD5 _)         = "Content-MD5"
-  header2Head (ContentRange _)       = "Content-Range"
-  header2Head (ContentType _)        = "Content-Type"
-  header2Head (Date _)               = "Date"
-  header2Head (Expect _)             = "Expect"
-  header2Head (Expires _)            = "Expires"
-  header2Head (From _)               = "From"
-  header2Head (Host _)               = "Host"
-  header2Head (IfMatch _)            = "If-Match"
-  header2Head (IfModifiedSince _)    = "If-Modified-Since"
-  header2Head (IfNoneMatch _)        = "If-None-Match"
-  header2Head (IfRange _)            = "If-Range"
-  header2Head (IfUnmodifiedSince _)  = "If-Unmodified-Since"
-  header2Head (LastModified _)       = "Last-Modified"
-  header2Head (MaxForwards _)        = "Max-Forwards"
-  header2Head (Pragma _)             = "Pragma"
-  header2Head (ProxyAuthorization _) = "Proxy-Authorization"
-  header2Head (Range _)              = "Range"
-  header2Head (Referer _)            = "Referer"
-  header2Head (TE _)                 = "Te"
-  header2Head (Trailer _)            = "Trailer"
-  header2Head (TransferEncoding _)   = "Transfer-Encoding"
-  header2Head (Upgrade _)            = "Upgrade"
-  header2Head (UserAgent _)          = "User-Agent"
-  header2Head (Via _)                = "Via"
-  header2Head (Warning _)            = "Warning"
-
-  header2Value :: Header -> String
-  header2Value (Accept v)             = v
-  header2Value (AcceptCharset v)      = v
-  header2Value (AcceptEncoding v)     = v
-  header2Value (AcceptLanguage v)     = v
-  header2Value (Allow v)              = v
-  header2Value (Authorization v)      = v
-  header2Value (CacheControl v)       = v
-  header2Value (Connection v)         = v
-  header2Value (ContentEncoding v)    = v
-  header2Value (ContentLanguage v)    = v
-  header2Value (ContentLength v)      = v
-  header2Value (ContentLocation v)    = v
-  header2Value (ContentMD5 v)         = v
-  header2Value (ContentRange v)       = v
-  header2Value (ContentType v)        = v
-  header2Value (Date v)               = v
-  header2Value (Expect v)             = v
-  header2Value (Expires v)            = v
-  header2Value (From v)               = v
-  header2Value (Host v)               = v
-  header2Value (IfMatch v)            = v
-  header2Value (IfModifiedSince v)    = v
-  header2Value (IfNoneMatch v)        = v
-  header2Value (IfRange v)            = v
-  header2Value (IfUnmodifiedSince v)  = v
-  header2Value (LastModified v)       = v
-  header2Value (MaxForwards v)        = v
-  header2Value (Pragma v)             = v
-  header2Value (ProxyAuthorization v) = v
-  header2Value (Range v)              = v
-  header2Value (Referer v)            = v
-  header2Value (TE v)                 = v
-  header2Value (Trailer v)            = v
-  header2Value (TransferEncoding v)   = v
-  header2Value (Upgrade v)            = v
-  header2Value (UserAgent v)          = v
-  header2Value (Via v)                = v
-  header2Value (Warning v)            = v
+  instance showHeaderHead :: Show HeaderHead where
+    show Accept             = "Accept"
+    show AcceptCharset      = "Accept-Charset"
+    show AcceptEncoding     = "Accept-Encoding"
+    show AcceptLanguage     = "Accept-Language"
+    show Allow              = "Allow"
+    show Authorization      = "Authorization"
+    show CacheControl       = "Cache-Control"
+    show Connection         = "Connection"
+    show ContentEncoding    = "Content-Encoding"
+    show ContentLanguage    = "Content-Language"
+    show ContentLength      = "Content-Length"
+    show ContentLocation    = "Content-Location"
+    show ContentMD5         = "Content-MD5"
+    show ContentRange       = "Content-Range"
+    show ContentType        = "Content-Type"
+    show Date               = "Date"
+    show Expect             = "Expect"
+    show Expires            = "Expires"
+    show From               = "From"
+    show Host               = "Host"
+    show IfMatch            = "If-Match"
+    show IfModifiedSince    = "If-Modified-Since"
+    show IfNoneMatch        = "If-None-Match"
+    show IfRange            = "If-Range"
+    show IfUnmodifiedSince  = "If-Unmodified-Since"
+    show LastModified       = "Last-Modified"
+    show MaxForwards        = "Max-Forwards"
+    show Pragma             = "Pragma"
+    show ProxyAuthorization = "Proxy-Authorization"
+    show Range              = "Range"
+    show Referer            = "Referer"
+    show TE                 = "Te"
+    show Trailer            = "Trailer"
+    show TransferEncoding   = "Transfer-Encoding"
+    show Upgrade            = "Upgrade"
+    show UserAgent          = "User-Agent"
+    show Via                = "Via"
+    show Warning            = "Warning"
+    show (Custom header)    = header
 
   status2Number :: StatusCode -> Number
   -- 100 Informational

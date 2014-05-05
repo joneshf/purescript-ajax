@@ -28,6 +28,7 @@ module Network.Ajax where
 
   instance applyAjax :: Apply Ajax where
     (<*>) (Response h f) (Response h' x) = Response (h ++ h') (f x)
+    -- This is obviously missing stuff, maybe this isn't actually an `Apply`?
 
   instance bindAjax :: Bind Ajax where
     (>>=) (Response h x) f = f x
@@ -82,21 +83,21 @@ module Network.Ajax where
   httpVerb :: Verb -> URI -> XHRAjax
   httpVerb v u = xhr >>= \x -> open x v u
 
-  onreadystatechange :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onreadystatechange :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onreadystatechange = on "onreadystatechange"
-  onabort            :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onabort            :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onabort            = on "onabort"
-  onerror            :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onerror            :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onerror            = on "onerror"
-  onload             :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onload             :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onload             = on "onload"
-  onloadend          :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadend          :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onloadend          = on "onloadend"
-  onloadstart        :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onloadstart        :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onloadstart        = on "onloadstart"
-  onprogress         :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  onprogress         :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   onprogress         = on "onprogress"
-  ontimeout          :: forall a. Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+  ontimeout          :: XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
   ontimeout          = on "ontimeout"
 
   currentTarget :: XHRAjax -> XHRAjax
@@ -120,8 +121,12 @@ module Network.Ajax where
     3 -> Loading
     4 -> Done
 
-  getResponseHeader :: XHRAjax -> Header -> String
-  getResponseHeader x h = (attr "getResponseHeader" x) $ header2Head h
+  getResponseHeader :: XHRAjax -> HeaderHead -> String
+  getResponseHeader x = attr "getResponseHeader" x <<< show
+
+  setRequestHeader :: XHRAjax -> Header -> XHRAjax
+  setRequestHeader x (Header header value) =
+    curry2 (attr "setRequestHeader" x) (show header) value
 
   -- | FFI Calls
 
@@ -140,7 +145,7 @@ module Network.Ajax where
     \      return function() { return x; }\
     \    }\
     \  }\
-    \}" :: forall a. String -> Ajax a -> (XHRAjax -> EffAjax) -> EffAjax
+    \}" :: String -> XHRAjax -> (XHRAjax -> EffAjax) -> EffAjax
 
   foreign import open
     "function open(x) {\
@@ -151,7 +156,7 @@ module Network.Ajax where
     \      return function() { return x; }\
     \    }\
     \  }\
-    \}" :: forall a. Ajax a -> Verb -> URI -> XHRAjax
+    \}" :: XHRAjax-> Verb -> URI -> XHRAjax
 
   foreign import send
     "function send(x) {\
@@ -159,15 +164,16 @@ module Network.Ajax where
     \  return function() { return x; }\
     \}" :: XHRAjax -> XHRAjax
 
-  foreign import setRequestHeader
-    "function setRequestHeader(x) {\
-    \  return function(header) {\
-    \    x.setRequestHeader(header2Head(header), header2Value(header));\
-    \    return function() { return x; }\
-    \  }\
-    \}" :: XHRAjax -> Header -> XHRAjax
-
   foreign import xhr
     "function xhr() {\
     \  return new XMLHttpRequest();\
     \}" :: XHRAjax
+
+  foreign import curry2
+    "function curry2(f) {\
+    \  return function(a) {\
+    \    return function(b) {\
+    \      return f(a, b);\
+    \    }\
+    \  }\
+    \}" :: forall a b c. (a -> b -> c) -> a -> b -> c
